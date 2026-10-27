@@ -186,3 +186,19 @@ Only features and changes actually present in the source code should be treated 
 
 ### Copyright and License
 The original author's copyright notice and MIT License terms are preserved. Any contributor copyright notice applies only to that contributor's own original contributions. Third-party code, dependencies, APIs, and market data remain subject to their respective licenses and terms.
+## System Architecture
+
+```mermaid
+flowchart TD
+    U["User / Browser"] --> FE["React Frontend"]
+    FE -->|"REST API Requests"| BE["FastAPI Backend"]
+    FE <-->|"WebSocket Connection"| BE
+    BE -->|"Market Data Requests"| MD["Market Data Provider"]
+    BE --> DB[("MongoDB Database")]
+
+    style U fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    style FE fill:#dcfce7,stroke:#16a34a,color:#14532d
+    style BE fill:#fef3c7,stroke:#d97706,color:#92400e
+    style MD fill:#f3e8ff,stroke:#9333ea,color:#581c87
+    style DB fill:#fee2e2,stroke:#dc2626,color:#991b1b
+```
