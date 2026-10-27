@@ -1,0 +1,98 @@
+﻿# Environment variables and secrets
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Node.js / React
+node_modules/
+build/
+dist/
+.npm/
+
+# Local databases, logs and temporary files
+*.log
+*.sqlite3
+*.db-journal
+
+# IDE and operating system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local backups
+*.backup-*
+*.bak
+
+# Downloaded Python wheels
+*.whl
+
+# StockViz local backup files - keep out of GitHub
+**/*.backup
+**/*.backup-*
+**/*.backup.*
+**/*.before-*
+**/*.websocket-backup
+**/*.bak
+**/*.old
+
+
+# Root-level backup files
+/*.backup*
+/*.bak
+/*.old
+
+# Downloaded platform-specific wheels
+/*.whl
+
+
+# Unfinalized license draft
+/PROPRIETARY-LICENSE-DRAFT.txt
+
+# Local original license backup
+/LICENSE.original-backup
+
+# Local backups and generated databases
+**/*.backup
+**/*.backup-*
+**/*.backup.*
+**/*.before-*
+**/*.websocket-backup
+**/*.bak
+**/*.old
+**/*.work.js
+**/*.pre-*
+**/*.theme-backup
+**/*.wallet-backup
+**/*.conflict-backup
+**/*.directory-backup
+**/*.logo-backup
+**/*.buy-sell-backup
+/backend/*.db
+
+# Local backup files and temporary artifacts
+/*.backup*
+/*.bak
+/*.old
+/ta_lib-*.whl
+/PROPRIETARY-LICENSE-DRAFT.txt
+/LICENSE.original-backup
+/backend/*.db
+
+# Local backup files
+backend/api/main.backup-before-fix.py
+README.md.pre-github-fix.bak
