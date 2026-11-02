@@ -63,6 +63,7 @@ const CompanyLogo = ({ symbol, name, size = "w-9 h-9" }) => {
 const CompanySelector = ({ selectedSymbol, onChange, companies, theme = "dark" }) => {
   const [showDropdown, setShowDropdown] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [selectedIndustry, setSelectedIndustry] = React.useState("All Industries");
   const dropdownRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -80,13 +81,25 @@ const CompanySelector = ({ selectedSymbol, onChange, companies, theme = "dark" }
     companies.find(([symbol]) => symbol === selectedSymbol)?.[1] ||
     selectedSymbol;
 
-  const filteredCompanies = companies.filter(([symbol, name, sector = ""]) => {
+  const industries = [
+    ...new Set(
+      companies
+        .map(([, , industry = ""]) => String(industry).trim())
+        .filter(Boolean)
+    ),
+  ].sort((a, b) => a.localeCompare(b));
+
+  const filteredCompanies = companies.filter(([symbol, name, industry = ""]) => {
     const query = searchTerm.trim().toLowerCase();
-    return (
+    const matchesSearch =
       symbol.toLowerCase().includes(query) ||
       name.toLowerCase().includes(query) ||
-      sector.toLowerCase().includes(query)
-    );
+      String(industry).toLowerCase().includes(query);
+
+    const matchesIndustry =
+      selectedIndustry === "All Industries" || industry === selectedIndustry;
+
+    return matchesSearch && matchesIndustry;
   });
 
   return (
@@ -113,6 +126,28 @@ const CompanySelector = ({ selectedSymbol, onChange, companies, theme = "dark" }
             className={`w-[calc(100%-16px)] mx-2 mb-2 p-2 rounded border text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${theme === "light" ? "bg-white text-gray-900 placeholder-gray-500 border-gray-300" : "bg-gray-900 text-white placeholder-gray-400 border-gray-600"}`}
             autoFocus
           />
+
+          <div className="mx-2 mb-2 flex gap-1.5 overflow-x-auto pb-1">
+            {["All Industries", ...industries].map((industry) => {
+              const active = selectedIndustry === industry;
+              return (
+                <button
+                  type="button"
+                  key={industry}
+                  onClick={() => setSelectedIndustry(industry)}
+                  className={`shrink-0 rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                    active
+                      ? "border-blue-500 bg-blue-600 text-white"
+                      : theme === "light"
+                        ? "border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
+                        : "border-gray-600 bg-gray-900 text-gray-200 hover:bg-gray-800"
+                  }`}
+                >
+                  {industry === "All Industries" ? "All" : industry}
+                </button>
+              );
+            })}
+          </div>
 
           <div className="max-h-64 overflow-y-auto">
             {filteredCompanies.length > 0 ? (
@@ -346,8 +381,8 @@ const TradingView = ({ theme = "dark" }) => {
         symbol: data.symbol || selectedSymbol,
         price: latest.close,
         change,
-        high: latest.high,
-        low: latest.low,
+        high: Math.max(...historical.map((item) => item.high)),
+        low: Math.min(...historical.map((item) => item.low)),
         volume: latest.volume,
         historical,
         lastUpdate: latest.time,
@@ -557,7 +592,7 @@ const previousCandle = newHistorical[lastIndex];
   };
 
   return (
-    <div className="p-2 md:p-4 bg-[#111a29] rounded-lg shadow">
+    <div className="min-w-0 p-2 md:p-4 rounded-lg shadow bg-[var(--surface)] text-[var(--text)]">
       {error && (
         <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{error}</div>
       )}
@@ -588,7 +623,7 @@ const previousCandle = newHistorical[lastIndex];
             onClick={() => setIsWatchlistOpen(true)}
             className="rounded-full bg-blue-600 px-5 py-3 font-semibold text-white shadow-xl hover:bg-blue-500"
           >
-            {`Ã¢ËœÂ° Watchlist (${watchlist.length})`}
+            {"◉ Watchlist (" + watchlist.length + ")"}
           </button>
         </div>
       )}
@@ -605,7 +640,7 @@ const previousCandle = newHistorical[lastIndex];
             <div className="flex items-center justify-between gap-2 p-4">
               <div>
                 <h3 className="font-semibold">My Watchlist</h3>
-                <p className="text-xs opacity-60">{watchlist.length} stocks Ã‚Â· Market Watch</p>
+                <p className="text-xs opacity-60">{watchlist.length} stocks · Market Watch</p>
               </div>
               <button
                 type="button"
