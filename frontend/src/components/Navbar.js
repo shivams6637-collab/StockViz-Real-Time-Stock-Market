@@ -1,5 +1,17 @@
 import { useState, useEffect } from "react";
-import { Bell, ChevronDown, LogOut, Moon, Sun } from "lucide-react";
+import {
+  Activity,
+  Bell,
+  ChevronDown,
+  LogOut,
+  Moon,
+  Sun,
+  LayoutDashboard,
+  ClipboardList,
+  BriefcaseBusiness,
+  ChartNoAxesCombined,
+  Wallet,
+} from "lucide-react";
 
 const Navbar = ({
   theme = "dark",
@@ -57,122 +69,161 @@ const Navbar = ({
     };
   }, []);
 
-  const getColorClass = (change) =>
-    change >= 0 ? "text-green-500" : "text-red-500";
+  const pages = [
+    { name: "Dashboard", icon: LayoutDashboard },
+    { name: "Orders", icon: ClipboardList },
+    { name: "Holdings", icon: BriefcaseBusiness },
+    { name: "Positions", icon: ChartNoAxesCombined },
+    { name: "Funds", icon: Wallet },
+  ];
 
-  const pages = ["Dashboard", "Orders", "Holdings", "Positions", "Funds"];
+  const formatIndex = (value) =>
+    value.toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+
+  const changeColor = (change) =>
+    change > 0
+      ? "text-emerald-500"
+      : change < 0
+        ? "text-rose-500"
+        : "text-[var(--text-muted)]";
 
   return (
-    <div className="flex flex-col md:flex-row justify-between items-center px-2 md:px-4 py-2 md:min-h-14 border-b shadow-md sticky top-0 z-50 bg-[var(--surface)] text-[var(--text)] border-[var(--border)]">
-      <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 md:gap-4 w-full md:w-auto">
-        <span className="font-semibold">NIFTY 50</span>
-
-        <div className="flex items-center space-x-2">
-          <span>{marketData.nifty.value.toFixed(2)}</span>
-          <span className={getColorClass(marketData.nifty.change)}>
-            {marketData.nifty.change > 0 ? "+" : ""}
-            {marketData.nifty.change.toFixed(2)}%
-          </span>
-        </div>
-
-        <span className="font-semibold">SENSEX</span>
-
-        <div className="flex items-center space-x-2">
-          <span>{marketData.sensex.value.toFixed(2)}</span>
-          <span className={getColorClass(marketData.sensex.change)}>
-            {marketData.sensex.change > 0 ? "+" : ""}
-            {marketData.sensex.change.toFixed(2)}%
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 md:gap-5 mt-2 md:mt-0 w-full md:w-auto">
-        {pages.map((page) => (
-          <button
-            key={page}
-            type="button"
-            onClick={() => onNavigate?.(page)}
-            aria-current={activePage === page ? "page" : undefined}
-            className={`text-sm md:text-base transition-colors ${
-              activePage === page
-                ? "text-blue-600 font-semibold"
-                : "text-gray-700 hover:text-blue-600"
-            }`}
-          >
-            {page}
-          </button>
-        ))}
-
-        {/* Theme toggle button */}
+    <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--surface)] text-[var(--text)] shadow-sm">
+      <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <button
           type="button"
-          onClick={onToggleTheme}
-          aria-label={
-            theme === "dark"
-              ? "Switch to bright mode"
-              : "Switch to dark mode"
-          }
-          title={theme === "dark" ? "Bright mode" : "Dark mode"}
-          className="rounded-full border border-[var(--border)] p-2 hover:opacity-80"
+          onClick={() => onNavigate?.("Dashboard")}
+          className="flex items-center gap-3 text-left"
+          aria-label="StockViz dashboard"
         >
-          {theme === "dark" ? (
-            <Sun className="h-5 w-5" />
-          ) : (
-            <Moon className="h-5 w-5" />
-          )}
-        </button>
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-emerald-400 to-sky-600 text-white shadow-md">
+            <Activity size={23} strokeWidth={2.5} />
+          </span>
 
-        {/* Notifications button */}
-        <button
-          type="button"
-          aria-label="Notifications"
-          onClick={() => window.alert("No new notifications.")}
-          className="hover:bg-gray-100 p-2 rounded-full transition-colors"
-        >
-          <Bell className="w-4 h-4 md:w-5 md:h-5" />
-        </button>
-
-        {/* Account menu */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setAccountOpen((open) => !open)}
-            aria-expanded={accountOpen}
-            className="flex items-center gap-2 hover:bg-gray-100 px-3 py-2 rounded"
-          >
-            <span className="max-w-32 truncate">
-              {user?.name || user?.email || "My Account"}
+          <span>
+            <span className="block text-xl font-extrabold tracking-tight">
+              Stock<span className="text-emerald-500">Viz</span>
             </span>
+            <span className="block text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--text-muted)]">
+              Market intelligence
+            </span>
+          </span>
+        </button>
 
-            <ChevronDown className="w-4 h-4" />
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            title={theme === "dark" ? "Light mode" : "Dark mode"}
+            className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--border)] transition hover:bg-[var(--surface-alt)]"
+          >
+            {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
           </button>
 
-          {accountOpen && (
-            <div className="absolute right-0 top-full mt-2 w-64 rounded-lg border bg-white p-3 shadow-lg">
-              <p className="font-semibold break-words">
-                {user?.name || "User"}
-              </p>
+          <button
+            type="button"
+            aria-label="Notifications"
+            onClick={() => window.alert("No new notifications.")}
+            className="grid h-10 w-10 place-items-center rounded-xl border border-[var(--border)] transition hover:bg-[var(--surface-alt)]"
+          >
+            <Bell size={18} />
+          </button>
 
-              <p className="mt-1 text-sm text-gray-500 break-words">
-                {user?.email}
-              </p>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setAccountOpen((open) => !open)}
+              aria-expanded={accountOpen}
+              className="flex max-w-[220px] items-center gap-2 rounded-xl border border-[var(--border)] px-3 py-2 transition hover:bg-[var(--surface-alt)]"
+            >
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-500">
+                {(user?.name || user?.email || "U").charAt(0).toUpperCase()}
+              </span>
+              <span className="hidden max-w-28 truncate text-sm font-medium sm:block">
+                {user?.name || user?.email || "My Account"}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`shrink-0 transition-transform ${accountOpen ? "rotate-180" : ""}`}
+              />
+            </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setAccountOpen(false);
-                  onLogout?.();
-                }}
-                className="mt-3 flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-red-600 hover:bg-red-50"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </button>
-            </div>
-          )}
+            {accountOpen && (
+              <div className="absolute right-0 top-full mt-3 w-64 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-xl">
+                <p className="break-words font-semibold">{user?.name || "User"}</p>
+                <p className="mt-1 break-words text-sm text-[var(--text-muted)]">
+                  {user?.email}
+                </p>
+                <div className="my-3 border-t border-[var(--border)]" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountOpen(false);
+                    onLogout?.();
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-rose-500 transition hover:bg-rose-500/10"
+                >
+                  <LogOut size={17} />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+
+      <div className="border-y border-[var(--border)] bg-[var(--surface-alt)]/60">
+        <div className="mx-auto flex max-w-[1600px] flex-wrap items-center gap-x-7 gap-y-2 px-4 py-3 sm:px-6 lg:px-8">
+          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+            Market watch
+          </span>
+
+          {[
+            { name: "NIFTY 50", data: marketData.nifty },
+            { name: "SENSEX", data: marketData.sensex },
+          ].map(({ name, data }) => (
+            <div key={name} className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-[var(--text-muted)]">{name}</span>
+              <span className="text-sm font-bold tabular-nums">{formatIndex(data.value)}</span>
+              <span className={`text-xs font-semibold tabular-nums ${changeColor(data.change)}`}>
+                {data.change > 0 ? "+" : ""}
+                {data.change.toFixed(2)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <nav
+        aria-label="Main navigation"
+        className="mx-auto flex max-w-[1600px] items-center gap-1 overflow-x-auto px-4 sm:px-6 lg:px-8"
+      >
+        {pages.map(({ name, icon: Icon }) => {
+          const active = activePage === name;
+
+          return (
+            <button
+              key={name}
+              type="button"
+              onClick={() => onNavigate?.(name)}
+              aria-current={active ? "page" : undefined}
+              className={`relative flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3.5 text-sm font-medium transition sm:px-4 ${
+                active
+                  ? "border-emerald-500 text-emerald-500"
+                  : "border-transparent text-[var(--text-muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--text)]"
+              }`}
+            >
+              <Icon size={17} />
+              {name}
+            </button>
+          );
+        })}
+      </nav>
+    </header>
   );
 };
 
