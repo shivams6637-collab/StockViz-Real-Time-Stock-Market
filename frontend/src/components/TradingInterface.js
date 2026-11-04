@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import { TrendingUp, TrendingDown, Loader, ChevronDown } from "lucide-react";
 import { ChartTypes, StockChart, ChartTypeSelector } from "./ChartTypeSelector";
+import CompanyLogo from "./CompanyLogo";
 import { api } from "../services/Api";
 
 const DURATIONS = [
@@ -24,42 +25,6 @@ const DURATIONS = [
   { label: "1M", value: "1mo" },
   { label: "1Y", value: "1y" },
 ];
-const CompanyLogo = ({ symbol, name, size = "w-9 h-9" }) => {
-  const [logoFailed, setLogoFailed] = React.useState(false);
-  const domains = {
-    "RELIANCE.NS": "ril.com", "TCS.NS": "tcs.com",
-    "HDFCBANK.NS": "hdfcbank.com", "INFY.NS": "infosys.com",
-    "ICICIBANK.NS": "icicibank.com", "HINDUNILVR.NS": "hul.co.in",
-    "ITC.NS": "itcportal.com", "SBIN.NS": "sbi.co.in",
-    "BHARTIARTL.NS": "airtel.in", "LT.NS": "larsentoubro.com"
-  };
-  const domain = domains[symbol] || domains[(symbol || "").replace(/\.BSE$/, ".NS")];
-  const localLogos = {
-  "RELIANCE.NS": "/logos/reliance.svg",
-  "RELIANCE.BSE": "/logos/reliance.svg",
-  "TCS.NS": "/logos/tcs.svg",
-  "TCS.BSE": "/logos/tcs.svg",
-  "HDFCBANK.NS": "/logos/hdfc.svg",
-  "HDFCBANK.BSE": "/logos/hdfc.svg",
-  "INFY.NS": "/logos/infosys.svg",
-  "INFY.BSE": "/logos/infosys.svg",
-  "ICICIBANK.NS": "/logos/icici.svg",
-  "ICICIBANK.BSE": "/logos/icici.svg",
-  "BHARTIARTL.NS": "/logos/airtel.svg",
-  "BHARTIARTL.BSE": "/logos/airtel.svg"
-};
-  const localLogo = localLogos[symbol];
-  const initials = (name || symbol || "?").split(/\s+/).filter(Boolean)
-    .slice(0, 2).map(word => word[0]).join("").toUpperCase();
-
-  return (
-    <div className={`${size} shrink-0 rounded-full bg-gray-700 flex items-center justify-center overflow-hidden text-xs font-semibold text-white`} title={name || symbol}>
-      {localLogo && !logoFailed ? (
-        <img src={localLogo} alt={`${name} logo`} className="w-full h-full object-contain bg-white" onError={() => setLogoFailed(true)} />
-      ) : initials}
-    </div>
-  );
-};
 const CompanySelector = ({ selectedSymbol, onChange, companies, theme = "dark" }) => {
   const [showDropdown, setShowDropdown] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -269,7 +234,9 @@ const TradingView = ({ theme = "dark" }) => {
     setTradeError("");
 
     const quantity = Number(tradeQuantity);
-    const price = Number(stockData.price);
+    const price = stockData.symbol === selectedSymbol
+      ? Number(stockData.price)
+      : Number.NaN;
 
     if (!Number.isInteger(quantity) || quantity < 1) {
       setTradeError("Quantity kam se kam 1 share honi chahiye.");
@@ -299,7 +266,7 @@ const TradingView = ({ theme = "dark" }) => {
     }
   };
   const [duration, setDuration] = useState("1d");
-  const [chartType, setChartType] = useState(ChartTypes.LINE);
+  const [chartType, setChartType] = useState(ChartTypes.COLORED_BAR);
   const [companies, setCompanies] = useState([]);
   const [showDurationDropdown, setShowDurationDropdown] = useState(false);
   const durationDropdownRef = React.useRef(null);
@@ -320,7 +287,7 @@ const TradingView = ({ theme = "dark" }) => {
     high: 0,
     low: 0,
     volume: 0,
-    lastUpdate: Date.now(),
+    lastUpdate: null,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -378,7 +345,7 @@ const TradingView = ({ theme = "dark" }) => {
 
       setStockData((prev) => ({
         ...prev,
-        symbol: data.symbol || selectedSymbol,
+        symbol: selectedSymbol,
         price: latest.close,
         change,
         high: Math.max(...historical.map((item) => item.high)),
@@ -550,7 +517,12 @@ const previousCandle = newHistorical[lastIndex];
   };
 
   const formatPrice = (price) => {
-    if (price === undefined || price === null) return "\u20B90.00";
+    if (
+      price === undefined ||
+      price === null ||
+      !Number.isFinite(Number(price)) ||
+      Number(price) <= 0
+    ) return "—";
     return `\u20B9${parseFloat(price).toFixed(2)}`;
   };
 
@@ -562,318 +534,354 @@ const previousCandle = newHistorical[lastIndex];
     return volume.toString();
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader className="w-6 h-6 animate-spin" />
-      </div>
-    );
-  }
-
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded shadow-lg">
-          <p className="text-gray-600 font-medium">
-           {formatDate(label)}
-           </p>
-          <p className="font-bold text-gray-900">
-             {formatPrice(payload[0].value)}
-         </p>
-          {payload[1] && (
-            <p className="text-gray-400">
-              Vol: {formatVolume(payload[1].value)}
-            </p>
-          )}
+        <div className="sv-chart-tooltip">
+          <p>{formatDate(label)}</p>
+          <strong>{formatPrice(payload[0].value)}</strong>
+          {payload[1] && <span>Vol: {formatVolume(payload[1].value)}</span>}
         </div>
       );
     }
     return null;
   };
 
+  const VolumeTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="sv-chart-tooltip">
+        <p>{formatDate(label)}</p>
+        <strong>{formatVolume(Number(payload[0].value) || 0)}</strong>
+        <span>Volume</span>
+      </div>
+    );
+  };
+
+  const selectedCompany = companies.find(([symbol]) => symbol === selectedSymbol);
+  const hasSelectedStockData = stockData.symbol === selectedSymbol;
+  const selectedHistorical = hasSelectedStockData ? stockData.historical : [];
+  const latestCandle = selectedHistorical[selectedHistorical.length - 1];
+  const filteredWatchlist = watchlist.filter((symbol) => {
+    const company = companies.find((item) => item[0] === symbol);
+    const query = watchlistSearch.trim().toLowerCase();
+    return symbol.toLowerCase().includes(query) ||
+      (company?.[1] || "").toLowerCase().includes(query);
+  });
+
   return (
-    <div className="min-w-0 p-2 md:p-4 rounded-lg shadow bg-[var(--surface)] text-[var(--text)]">
-      {error && (
-        <div className="mb-4 p-2 bg-red-100 text-red-700 rounded">{error}</div>
-      )}
-
-      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4 mb-4">
-        <div className="w-full md:w-1/3">
-          <CompanySelector
-            selectedSymbol={selectedSymbol}
-            onChange={setSelectedSymbol}
-            companies={companies}
-      theme={theme}
-          />
-
-          <button
-            type="button"
-            onClick={toggleWatchlist}
-            className={`mt-2 w-full px-3 py-2 rounded border text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${theme === "light" ? "border-gray-300 bg-white text-gray-900 hover:bg-gray-100" : "border-gray-600 bg-gray-900 text-white hover:bg-gray-800"}`}
-          >
-            {watchlist.includes(selectedSymbol) ? "Remove from Watchlist" : "Add to Watchlist"}
-          </button>
-        </div>
-
-
-      {!isWatchlistOpen && (
-        <div className="fixed right-5 bottom-5 z-40">
-          <button
-            type="button"
-            onClick={() => setIsWatchlistOpen(true)}
-            className="rounded-full bg-blue-600 px-5 py-3 font-semibold text-white shadow-xl hover:bg-blue-500"
-          >
-            {"◉ Watchlist (" + watchlist.length + ")"}
-          </button>
-        </div>
-      )}
-
-      {isWatchlistOpen && (
-        <>
-          <button
-            type="button"
-            aria-label="Close watchlist overlay"
-            onClick={() => setIsWatchlistOpen(false)}
-            className="fixed inset-0 z-40 cursor-default bg-black/20"
-          />
-          <aside className={`fixed right-4 top-20 bottom-20 z-50 flex w-[min(92vw,440px)] flex-col overflow-hidden rounded-xl border shadow-2xl ${theme === "light" ? "border-gray-300 bg-white text-gray-900" : "border-slate-700 bg-[#111827] text-white"}`}>
-            <div className="flex items-center justify-between gap-2 p-4">
-              <div>
-                <h3 className="font-semibold">My Watchlist</h3>
-                <p className="text-xs opacity-60">{watchlist.length} stocks · Market Watch</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsWatchlistOpen(false)}
-                aria-label="Close watchlist"
-                className="rounded px-3 py-1 text-xl hover:bg-slate-700/30"
-              >
-                Ãƒâ€”
-              </button>
+    <div className="sv-terminal">
+      {error && <div className="sv-terminal-error" role="alert">{error}</div>}
+      <div className="sv-terminal-layout">
+        <aside className={`sv-watchlist-panel ${isWatchlistOpen ? "is-mobile-open" : ""}`}>
+          <div className="sv-watchlist-heading">
+            <div>
+              <span className="sv-section-kicker">MARKET WATCH</span>
+              <h2>Watchlist</h2>
             </div>
+            <span className="sv-watchlist-count">{watchlist.length}</span>
+            <button
+              type="button"
+              className="sv-watchlist-close"
+              aria-label="Close watchlist"
+              onClick={() => setIsWatchlistOpen(false)}
+            >
+              ×
+            </button>
+          </div>
+          <div className="sv-watchlist-search">
+            <input
+              type="search"
+              value={watchlistSearch}
+              onChange={(event) => setWatchlistSearch(event.target.value)}
+              placeholder="Search symbols"
+              aria-label="Search watchlist"
+            />
+          </div>
+          <div className="sv-watchlist-columns">
+            <span>Instrument</span>
+            <span className="text-right">Last price</span>
+          </div>
+          <div className="sv-watchlist-items">
+            {filteredWatchlist.length ? filteredWatchlist.map((symbol) => {
+              const company = companies.find((item) => item[0] === symbol);
+              const quote = watchlistQuotes[symbol];
+              const isSelected = selectedSymbol === symbol;
+              const isCurrentQuote =
+                isSelected && hasSelectedStockData && Number(stockData.price) > 0;
+              const price = isCurrentQuote ? stockData.price : quote?.price;
+              const change = isCurrentQuote ? stockData.change : quote?.change;
+              const hasPrice = Number(price) > 0;
 
-            <div className="px-3 pb-3">
-              <input
-                type="text"
-                value={watchlistSearch}
-                onChange={(e) => setWatchlistSearch(e.target.value)}
-                placeholder="Search watchlist..."
-                className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:border-blue-500 ${theme === "light" ? "border-gray-300 bg-white" : "border-slate-700 bg-[#0b1220] text-white"}`}
+              return (
+                <div
+                  key={symbol}
+                  className={`sv-watchlist-row ${isSelected ? "is-selected" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className="sv-watchlist-select"
+                    onClick={() => {
+                      setSelectedSymbol(symbol);
+                      setIsWatchlistOpen(false);
+                    }}
+                  >
+                    <CompanyLogo
+                      symbol={symbol}
+                      name={company?.[1] || symbol}
+                      size="w-8 h-8"
+                    />
+                    <span className="sv-watchlist-symbol">
+                      <strong>{symbol.replace(/\.(NS|BSE)$/, "")}</strong>
+                      <small title={company?.[1] || symbol}>{company?.[1] || symbol}</small>
+                    </span>
+                    <span className="sv-watchlist-quote">
+                      <strong>
+                        {hasPrice
+                          ? `₹${Number(price).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : "—"}
+                      </strong>
+                      <small className={change == null ? "" : change >= 0 ? "is-positive" : "is-negative"}>
+                        {change == null ? "—" : `${change >= 0 ? "+" : ""}${Number(change).toFixed(2)}%`}
+                      </small>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${symbol} from watchlist`}
+                    className="sv-watchlist-remove"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setWatchlist((previous) => previous.filter((item) => item !== symbol));
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            }) : (
+              <p className="sv-watchlist-empty">
+                {watchlist.length ? "No matching instruments." : "Your watchlist is empty. Add a stock to follow it here."}
+              </p>
+            )}
+          </div>
+          <p className="sv-watchlist-footnote">Quotes use available historical market data.</p>
+        </aside>
+
+        <main className="sv-terminal-main">
+          <div className="sv-instrument-toolbar">
+            <button
+              type="button"
+              className="sv-mobile-watchlist-toggle"
+              onClick={() => setIsWatchlistOpen((open) => !open)}
+              aria-expanded={isWatchlistOpen}
+            >
+              Watchlist <span>{watchlist.length}</span>
+            </button>
+            <div className="sv-instrument-search">
+              <CompanySelector
+                selectedSymbol={selectedSymbol}
+                onChange={setSelectedSymbol}
+                companies={companies}
+                theme={theme}
               />
             </div>
-
-            <div className="flex-1 overflow-auto">
-              <table className="w-full text-left text-sm">
-                <thead className={`sticky top-0 ${theme === "light" ? "bg-gray-50 text-gray-500" : "bg-[#0b1220] text-slate-400"}`}>
-                  <tr>
-                    <th className="px-3 py-3 font-medium">Symbol</th>
-                    <th className="px-3 py-3 text-right font-medium">Price</th>
-                    <th className="px-3 py-3 text-right font-medium">Change</th>
-                    <th className="px-3 py-3 text-right font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {watchlist.filter((symbol) => {
-                    const company = companies.find((item) => item[0] === symbol);
-                    const query = (watchlistSearch || "").toLowerCase();
-                    return symbol.toLowerCase().includes(query) ||
-                      (company?.[1] || "").toLowerCase().includes(query);
-                  }).map((symbol) => {
-                    const company = companies.find((item) => item[0] === symbol);
-                    const isSelected = selectedSymbol === symbol;
-                    const quote = watchlistQuotes[symbol];
-                    const hasPrice = Number(quote?.price) > 0;
-                    const price = hasPrice ? Number(quote.price) : null;
-                    const change = hasPrice && Number.isFinite(Number(quote.change))
-                      ? Number(quote.change)
-                      : null;
-
-                    return (
-                      <tr
-                        key={symbol}
-                        onClick={() => setSelectedSymbol(symbol)}
-                        className={`cursor-pointer border-t ${theme === "light" ? "border-gray-200 hover:bg-blue-50" : "border-slate-800 hover:bg-slate-800/70"} ${isSelected ? (theme === "light" ? "bg-blue-50" : "bg-blue-950/40") : ""}`}
-                      >
-                        <td className="px-3 py-3">
-                          <div className="font-medium">{symbol.replace(/\.(NS|BSE)$/, "")}</div>
-                          <div className="max-w-36 truncate text-xs opacity-60">{company?.[1] || symbol}</div>
-                        </td>
-                        <td className="px-3 py-3 text-right tabular-nums">
-                          {price !== null ? `Ã¢â€šÂ¹${price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "Ã¢â‚¬â€"}
-                        </td>
-                        <td className={`px-3 py-3 text-right tabular-nums ${change === null ? "opacity-50" : change >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                          {change === null ? "Ã¢â‚¬â€" : `${change >= 0 ? "+" : ""}${change.toFixed(2)}%`}
-                        </td>
-                        <td className="px-3 py-3 text-right">
-                          <button
-                            type="button"
-                            aria-label={`Remove ${symbol} from watchlist`}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setWatchlist((previous) => previous.filter((item) => item !== symbol));
-                            }}
-                            className="rounded px-2 py-1 opacity-70 hover:text-red-400"
-                          >
-                            Ãƒâ€”
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="sv-toolbar-control">
+              <ChartTypeSelector chartType={chartType} onChange={setChartType} />
             </div>
-
-            <div className="flex items-center justify-between gap-2 border-t border-slate-700 p-3">
-              <span className="text-xs opacity-60">Select a stock to update the chart</span>
+            <div className="sv-toolbar-control sv-duration-control" ref={durationDropdownRef}>
               <button
                 type="button"
-                onClick={() => {
-                  if (!watchlist.includes(selectedSymbol)) toggleWatchlist();
-                }}
-                disabled={watchlist.includes(selectedSymbol)}
-                className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50"
+                className="sv-duration-button"
+                onClick={() => setShowDurationDropdown((visible) => !visible)}
+                aria-expanded={showDurationDropdown}
               >
-                + Add
+                {DURATIONS.find((item) => item.value === duration)?.label || "1D"}
+                <ChevronDown className="h-4 w-4" />
               </button>
+              {showDurationDropdown && (
+                <div className="sv-duration-menu">
+                  {DURATIONS.map(({ label, value }) => (
+                    <button
+                      type="button"
+                      key={value}
+                      className={duration === value ? "is-selected" : ""}
+                      onClick={() => {
+                        setDuration(value);
+                        setShowDurationDropdown(false);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </aside>
-        </>
-      )}        <div className="w-full md:w-1/3">
-          <ChartTypeSelector chartType={chartType} onChange={setChartType} />
-        </div>
+            <button
+              type="button"
+              onClick={toggleWatchlist}
+              className={`sv-watchlist-action ${watchlist.includes(selectedSymbol) ? "is-added" : ""}`}
+            >
+              {watchlist.includes(selectedSymbol) ? "★ Saved" : "+ Watch"}
+            </button>
+          </div>
 
-        <div className="w-full md:w-1/3 relative" ref={durationDropdownRef}>
-          <button
-            className="w-full p-2 border rounded bg-[#111a29] flex items-center justify-between text-sm md:text-base"
-            onClick={() => setShowDurationDropdown(!showDurationDropdown)}
-          >
-            <span>
-              {DURATIONS.find((d) => d.value === duration)?.label || "1D"}
-            </span>
-            <ChevronDown className="w-4 h-4" />
-          </button>
-
-          {showDurationDropdown && (
-            <div className="absolute left-0 md:right-0 mt-1 w-full md:w-36 py-1 bg-[#111a29] border rounded shadow-lg z-10">
-              {DURATIONS.map(({ label, value }) => (
-                <button
-                  key={value}
-                  className={`w-full px-4 py-2 text-left hover:bg-gray-100 ${
-                    duration === value ? "bg-blue-50 text-blue-600" : ""
-                  }`}
-                  onClick={() => {
-                    setDuration(value);
-                    setShowDurationDropdown(false);
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
+          <section className="sv-instrument-overview">
+            <div className="sv-instrument-title">
+              <CompanyLogo
+                symbol={selectedSymbol}
+                name={selectedCompany?.[1] || selectedSymbol}
+                className="sv-instrument-avatar"
+              />
+              <div>
+                <span className="sv-section-kicker">{selectedSymbol.endsWith(".BSE") ? "BSE" : "NSE"} · EQUITY</span>
+                <h1>{selectedCompany?.[1] || selectedSymbol}</h1>
+                <p>{selectedSymbol}{selectedCompany?.[2] ? ` · ${selectedCompany[2]}` : ""}</p>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+            <div className="sv-instrument-price">
+              <strong>{hasSelectedStockData ? formatPrice(stockData.price) : "—"}</strong>
+              {hasSelectedStockData ? (
+                <span className={stockData.change >= 0 ? "is-positive" : "is-negative"}>
+                  {stockData.change >= 0 ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+                  {stockData.change > 0 ? "+" : ""}{Number(stockData.change || 0).toFixed(2)}%
+                </span>
+              ) : <span>—</span>}
+              <small>{loading ? "Updating market data…" : `Last candle ${hasSelectedStockData && stockData.lastUpdate ? formatDate(stockData.lastUpdate) : "—"}`}</small>
+            </div>
+          </section>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6 text-xs md:text-sm">
-        <div className="p-2 bg-gray-50 text-gray-900 rounded">
-          <div className="text-gray-600">Price</div>
-          <div className="font-semibold text-gray-900">{formatPrice(stockData.price)}</div>
-        </div>
-        <div className="p-2 bg-gray-50 text-gray-900 rounded">
-          <div className="text-gray-600">Change</div>
-          <div
-            className={`font-semibold flex items-center gap-1 ${
-              stockData.change >= 0 ? "text-green-500" : "text-red-500"
-            }`}
-          >
-            {stockData.change >= 0 ? (
-              <TrendingUp className="w-4 h-4" />
+          <section className="sv-market-stats" aria-label="Selected stock details">
+            <div className="sv-market-stat">
+              <span>OPEN</span>
+              <strong>{latestCandle ? formatPrice(latestCandle.open) : "—"}</strong>
+            </div>
+            <div className="sv-market-stat">
+              <span>HIGH</span>
+              <strong>{hasSelectedStockData ? formatPrice(stockData.high) : "—"}</strong>
+            </div>
+            <div className="sv-market-stat">
+              <span>LOW</span>
+              <strong>{hasSelectedStockData ? formatPrice(stockData.low) : "—"}</strong>
+            </div>
+            <div className="sv-market-stat">
+              <span>VOLUME</span>
+              <strong>{latestCandle ? formatVolume(stockData.volume) : "—"}</strong>
+            </div>
+          </section>
+
+          <section className="sv-terminal-panel sv-chart-panel">
+            <div className="sv-panel-heading">
+              <div>
+                <span className="sv-section-kicker">PRICE ACTION</span>
+                <h2>{selectedSymbol} <span>·</span> {DURATIONS.find((item) => item.value === duration)?.label || "1D"}</h2>
+              </div>
+              <span className={`sv-feed-state ${error ? "has-error" : ""}`}>
+                <span />
+                {error ? "Feed issue" : loading ? "Updating" : "Market data"}
+              </span>
+            </div>
+            {loading && selectedHistorical.length === 0 ? (
+              <div className="sv-chart-loading"><Loader className="h-5 w-5 animate-spin" /> Loading historical data</div>
+            ) : selectedHistorical.length ? (
+              <StockChart
+                data={selectedHistorical}
+                chartType={chartType}
+                formatDate={formatDate}
+                formatPrice={formatPrice}
+                formatVolume={formatVolume}
+                CustomTooltip={CustomTooltip}
+                className="sv-terminal-stock-chart"
+              />
             ) : (
-              <TrendingDown className="w-4 h-4" />
+              <div className="sv-chart-loading">No historical market data is available for this instrument.</div>
             )}
-            {(stockData.change || 0).toFixed(2)}%
-          </div>
-        </div>
-        <div className="p-2 bg-gray-50 text-gray-900 rounded">
-          <div className="text-gray-600">High</div>
-          <div className="font-semibold text-gray-900">{formatPrice(stockData.high)}</div>
-        </div>
-        <div className="p-2 bg-gray-50 text-gray-900 rounded">
-          <div className="text-gray-600">Low</div>
-          <div className="font-semibold text-gray-900">{formatPrice(stockData.low)}</div>
-        </div>
-      </div>
+          </section>
 
-      <StockChart
-        data={stockData.historical}
-        chartType={chartType}
-        formatDate={formatDate}
-        formatPrice={formatPrice}
-        formatVolume={formatVolume}
-        CustomTooltip={CustomTooltip}
-        className="h-48 md:h-96 mb-6 md:mb-12"
-      />
-
-      <div className="my-6 rounded-lg border bg-[#111a29] p-4 shadow-sm">
-        <h2 className="mb-1 text-xl font-semibold">Paper Trading</h2>
-        <p className="mb-4 text-sm text-gray-400">Virtual trading only ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã‚Â¡ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â no real money is used.</p>
-
-        <div className="grid gap-4 sm:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium">Order Type</label>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => setTradeSide("BUY")}
-                className={`flex-1 rounded px-4 py-2 text-white ${tradeSide === "BUY" ? "bg-green-600" : "bg-gray-400"}`}>
-                Buy
-              </button>
-              <button type="button" onClick={() => setTradeSide("SELL")}
-                className={`flex-1 rounded px-4 py-2 text-white ${tradeSide === "SELL" ? "bg-red-600" : "bg-gray-400"}`}>
-                Sell
-              </button>
+          <section className="sv-terminal-panel sv-volume-panel">
+            <div className="sv-panel-heading">
+              <div>
+                <span className="sv-section-kicker">TRADING ACTIVITY</span>
+                <h2>Volume</h2>
+              </div>
+              <span className="sv-volume-latest">{latestCandle ? formatVolume(stockData.volume) : "—"} <small>shares</small></span>
             </div>
-          </div>
-
-          <div>
-            <label htmlFor="trade-quantity" className="mb-1 block text-sm font-medium">Quantity (shares)</label>
-            <input id="trade-quantity" type="number" min="1" step="1"
-              value={tradeQuantity}
-              onChange={(event) => setTradeQuantity(event.target.value)}
-              className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder-gray-500" />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium">Estimated Total</label>
-            <div className="rounded bg-gray-50 text-gray-900 px-3 py-2 font-semibold">
-              ?{(Math.max(0, Number(tradeQuantity) || 0) * Number(stockData.price || 0)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+            <div className="sv-volume-chart">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={selectedHistorical} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 5" vertical={false} stroke="var(--chart-grid)" />
+                  <XAxis
+                    dataKey="time"
+                    tickFormatter={formatDate}
+                    minTickGap={55}
+                    tick={{ fill: "var(--chart-label)", fontSize: 10 }}
+                    axisLine={{ stroke: "var(--chart-grid)" }}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={formatVolume}
+                    width={58}
+                    tick={{ fill: "var(--chart-label)", fontSize: 10 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<VolumeTooltip />} cursor={{ fill: "var(--chart-hover)" }} />
+                  <Bar dataKey="volume" fill="#3989db" radius={[2, 2, 0, 0]} maxBarSize={12} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-        </div>
+          </section>
 
-        {tradeMessage && <p className="mt-3 rounded bg-green-50 p-3 text-green-700">{tradeMessage}</p>}
-        {tradeError && <p className="mt-3 rounded bg-red-50 p-3 text-red-700">{tradeError}</p>}
+          <section className="sv-terminal-panel sv-paper-trading">
+            <div className="sv-panel-heading">
+              <div>
+                <span className="sv-section-kicker">PRACTICE ACCOUNT</span>
+                <h2>Paper trading</h2>
+              </div>
+              <span className="sv-demo-badge">DEMO MODE</span>
+            </div>
+            <p className="sv-paper-note">Virtual trading only. No real money is used.</p>
 
-        <button type="button" onClick={submitPaperOrder} disabled={placingOrder || loading}
-          className={`mt-4 w-full rounded px-4 py-3 font-semibold text-white disabled:opacity-50 ${tradeSide === "BUY" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}>
-          {placingOrder ? "Placing Order..." : `Place Paper ${tradeSide} Order`}
-        </button>
-      </div>
-      <div className="h-32 md:h-44">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={stockData.historical}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="time"
-              tickFormatter={formatDate}
-              height={50}
-              tickMargin={20}
-              // minTickGap={50}
-            />
-            <YAxis tickFormatter={formatVolume} />
-            <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="volume" fill="#fecaca" />
-          </BarChart>
-        </ResponsiveContainer>
+            <div className="sv-order-grid">
+              <div>
+                <label className="sv-field-label">Order side</label>
+                <div className="sv-side-toggle">
+                  <button type="button" onClick={() => setTradeSide("BUY")} className={tradeSide === "BUY" ? "is-buy-active" : ""}>Buy</button>
+                  <button type="button" onClick={() => setTradeSide("SELL")} className={tradeSide === "SELL" ? "is-sell-active" : ""}>Sell</button>
+                </div>
+              </div>
+              <div>
+                <label htmlFor="trade-quantity" className="sv-field-label">Quantity (shares)</label>
+                <input
+                  id="trade-quantity"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={tradeQuantity}
+                  onChange={(event) => setTradeQuantity(event.target.value)}
+                />
+              </div>
+              <div>
+                <span className="sv-field-label">Estimated total</span>
+                <div className="sv-order-total">
+                  {hasSelectedStockData
+                    ? `₹${(Math.max(0, Number(tradeQuantity) || 0) * Number(stockData.price || 0)).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`
+                    : "—"}
+                </div>
+              </div>
+            </div>
+            {tradeMessage && <p className="sv-trade-message is-success" role="status">{tradeMessage}</p>}
+            {tradeError && <p className="sv-trade-message is-error" role="alert">{tradeError}</p>}
+            <button
+              type="button"
+              onClick={submitPaperOrder}
+              disabled={placingOrder || loading || !hasSelectedStockData || !stockData.price}
+              className={`sv-place-order ${tradeSide === "BUY" ? "is-buy" : "is-sell"}`}
+            >
+              {placingOrder ? "Placing order…" : `Place paper ${tradeSide} order`}
+            </button>
+          </section>
+        </main>
       </div>
     </div>
   );

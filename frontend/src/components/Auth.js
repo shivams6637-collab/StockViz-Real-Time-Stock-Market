@@ -40,7 +40,7 @@ export default function Auth({ onLogin }) {
   const isSignup = mode === 'signup';
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#080e1b] px-4 py-8 text-white sm:px-6 lg:py-12">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-transparent px-4 py-8 text-white sm:px-6 lg:py-12">
       <div className="pointer-events-none absolute -left-32 -top-32 h-96 w-96 rounded-full bg-blue-600/10 blur-3xl" />
       <style>{`
         .stockviz-particle-layer {
@@ -99,9 +99,9 @@ export default function Auth({ onLogin }) {
       </div>
       <div className="pointer-events-none absolute -bottom-40 -right-20 h-96 w-96 rounded-full bg-cyan-500/10 blur-3xl" />
 
-      <div className="relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 bg-[#101a2b] shadow-2xl shadow-black/40 lg:grid-cols-2">
+      <div className="sv-auth-card relative grid w-full max-w-5xl overflow-hidden rounded-3xl border border-white/10 shadow-2xl shadow-black/40 lg:grid-cols-2">
 
-        <section className="relative hidden flex-col justify-between overflow-hidden bg-gradient-to-br from-[#142b50] via-[#10213c] to-[#0c1526] p-10 lg:flex xl:p-14">
+        <section className="sv-auth-promo relative hidden flex-col justify-between overflow-hidden p-10 lg:flex xl:p-14">
           <div className="pointer-events-none absolute -right-24 top-24 h-72 w-72 rounded-full border border-blue-400/10" />
           <div className="pointer-events-none absolute -right-12 top-36 h-48 w-48 rounded-full border border-blue-400/15" />
           <div className="pointer-events-none absolute bottom-24 left-10 h-52 w-52 rounded-full bg-blue-500/10 blur-3xl" />

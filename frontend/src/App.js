@@ -141,15 +141,23 @@ const handleLogout = () => {
 
   const page = pageInfo[activePage];
   if (authChecking) {
-  return <p className="p-10 text-center">Checking login...</p>;
-}
+    return (
+      <div className="sv-app-content">
+        <p className="p-10 text-center">Checking login...</p>
+      </div>
+    );
+  }
 
-if (!user) {
-  return <Auth onLogin={setUser} />;
-}
-  return (
-    <div>
-      <Navbar
+  if (!user) {
+    return (
+      <div className="sv-app-content">
+        <Auth onLogin={setUser} />
+      </div>
+    );
+  }
+    return (
+      <div className="sv-app-content">
+        <Navbar
         theme={theme}
         onToggleTheme={() =>
           setTheme((current) => (current === "dark" ? "light" : "dark"))
